@@ -11,10 +11,10 @@ export default async function NewBuyerPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Add New Buyer Lead</h1>
-        <p className="text-muted-foreground">Fill in the details to create a new buyer lead</p>
+        <p className="text-sm text-gray-500">Fill in the details to create a new buyer lead</p>
       </div>
 
       <BuyerForm />

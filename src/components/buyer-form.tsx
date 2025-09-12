@@ -111,7 +111,7 @@ export default function BuyerForm({ initialData, isEdit = false }: BuyerFormProp
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -343,7 +343,7 @@ export default function BuyerForm({ initialData, isEdit = false }: BuyerFormProp
         </div>
       )}
 
-      <div className="flex gap-4">
+  <div className="flex gap-4">
         <Button type="submit" disabled={loading}>
           {loading ? 'Saving...' : isEdit ? 'Update Lead' : 'Create Lead'}
         </Button>

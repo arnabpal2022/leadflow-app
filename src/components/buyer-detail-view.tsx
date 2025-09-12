@@ -70,10 +70,10 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
 
   if (isEditing) {
     return (
-      <div>
+      <div className="max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Edit Buyer Lead</h1>
-          <p className="text-muted-foreground">Update the buyer lead details</p>
+          <p className="text-sm text-gray-500">Update the buyer lead details</p>
         </div>
         <BuyerForm 
           initialData={buyer} 
@@ -84,7 +84,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -114,7 +114,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
       </div>
 
       {/* Quick Status Update */}
-      <div className="bg-white p-6 rounded-lg shadow">
+  <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
         <h2 className="text-xl font-semibold mb-4">Quick Status Update</h2>
         <div className="flex items-center gap-4">
           <Select
@@ -136,7 +136,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
 
       {/* Buyer Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
           <h2 className="text-xl font-semibold mb-6">Contact Information</h2>
           <div className="space-y-4">
             <div>
@@ -160,7 +160,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+  <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
           <h2 className="text-xl font-semibold mb-6">Property Requirements</h2>
           <div className="space-y-4">
             <div>
@@ -194,7 +194,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+  <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
           <h2 className="text-xl font-semibold mb-6">Lead Information</h2>
           <div className="space-y-4">
             <div>
@@ -227,7 +227,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+  <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
           <h2 className="text-xl font-semibold mb-6">Additional Information</h2>
           <div className="space-y-4">
             {buyer.notes && (

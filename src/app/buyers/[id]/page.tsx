@@ -49,7 +49,7 @@ export default async function BuyerDetailPage({ params }: Props) {
     };
 
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <BuyerDetailView buyer={buyerWithParsedTags} />
       </div>
     );

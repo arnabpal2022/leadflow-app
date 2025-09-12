@@ -11,10 +11,10 @@ export default async function ImportPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Import Buyer Leads</h1>
-        <p className="text-muted-foreground">Upload a CSV file to import multiple buyer leads</p>
+        <p className="text-sm text-gray-500">Upload a CSV file to import multiple buyer leads</p>
       </div>
 
       <ImportForm />

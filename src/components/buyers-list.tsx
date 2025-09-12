@@ -158,7 +158,7 @@ export default function BuyersList() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 p-4 bg-white border border-gray-100 rounded-lg shadow-sm">
         <Input
           placeholder="Search by name, phone, email..."
           value={filters.search}
@@ -166,6 +166,7 @@ export default function BuyersList() {
         />
         
         <Select
+          className="min-w-0 w-full transition-all duration-150 ease-in-out focus:outline-none focus:border-none focus:scale-[1.01] hover:scale-[1.01]"
           value={filters.city || ''}
           onChange={(e) => updateFilters({ city: (e.target.value || undefined) as BuyerFilters['city'] })}
         >
@@ -178,6 +179,7 @@ export default function BuyersList() {
         </Select>
 
         <Select
+          className="min-w-0 w-full transition-all duration-150 ease-in-out focus:outline-none focus:border-none focus:scale-[1.01] hover:scale-[1.01]"
           value={filters.propertyType || ''}
           onChange={(e) => updateFilters({ propertyType: (e.target.value || undefined) as BuyerFilters['propertyType'] })}
         >
@@ -190,6 +192,7 @@ export default function BuyersList() {
         </Select>
 
         <Select
+          className="min-w-0 w-full transition-all duration-150 ease-in-out focus:outline-none focus:border-none focus:scale-[1.01] hover:scale-[1.01]"
           value={filters.status || ''}
           onChange={(e) => updateFilters({ status: (e.target.value || undefined) as BuyerFilters['status'] })}
         >
@@ -204,6 +207,7 @@ export default function BuyersList() {
         </Select>
 
         <Select
+          className="min-w-0 w-full transition-all duration-150 ease-in-out focus:outline-none focus:border-none focus:scale-[1.01] hover:scale-[1.01]"
           value={filters.timeline || ''}
           onChange={(e) => updateFilters({ timeline: (e.target.value || undefined) as BuyerFilters['timeline'] })}
         >
@@ -214,17 +218,31 @@ export default function BuyersList() {
           <option value="Exploring">Exploring</option>
         </Select>
 
-        <Button onClick={handleExport} variant="outline" className="w-full">
-          <Download className="w-4 h-4 mr-2" />
+        <Button
+          onClick={async () => {
+            // small rotation animation by toggling a class
+            const btn = document.getElementById('export-button');
+            if (btn) {
+              btn.classList.add('animate-[spin_0.6s_ease]');
+              setTimeout(() => btn.classList.remove('animate-[spin_0.6s_ease]'), 600);
+            }
+            await handleExport();
+          }}
+          id="export-button"
+          variant="ghost"
+          className="w-full"
+        >
+          <Download className="w-4 h-4 mr-2 transition-transform duration-200" />
           Export
         </Button>
       </div>
 
       {/* Results */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-100">
         {data?.buyers.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500">No buyers found matching your criteria.</p>
+            <p className="text-sm text-gray-400 mt-2">Try clearing filters or importing leads.</p>
           </div>
         ) : (
           <>
@@ -254,7 +272,7 @@ export default function BuyersList() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {data?.buyers.map((buyer) => (
-                    <tr key={buyer.id} className="hover:bg-gray-50">
+                    <tr key={buyer.id} className="hover:bg-gray-50 transition-transform duration-150 ease-in-out hover:scale-[1.01]">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
@@ -315,14 +333,14 @@ export default function BuyersList() {
               <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => handlePageChange(data.pagination.page - 1)}
                     disabled={data.pagination.page <= 1}
                   >
                     Previous
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => handlePageChange(data.pagination.page + 1)}
                     disabled={data.pagination.page >= data.pagination.totalPages}
                   >
@@ -347,7 +365,7 @@ export default function BuyersList() {
                   <div>
                     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => handlePageChange(data.pagination.page - 1)}
                         disabled={data.pagination.page <= 1}
                         className="rounded-l-md"
@@ -366,7 +384,7 @@ export default function BuyersList() {
                               <span className="px-3 py-2 text-gray-500">...</span>
                             )}
                             <Button
-                              variant={page === data.pagination.page ? 'default' : 'outline'}
+                              variant={page === data.pagination.page ? 'default' : 'ghost'}
                               onClick={() => handlePageChange(page)}
                               className="rounded-none"
                             >
@@ -375,7 +393,7 @@ export default function BuyersList() {
                           </div>
                         ))}
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => handlePageChange(data.pagination.page + 1)}
                         disabled={data.pagination.page >= data.pagination.totalPages}
                         className="rounded-r-md"
