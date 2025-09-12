@@ -1,0 +1,188 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { buyers, buyerHistory } from '@/lib/db/schema';
+import { buyerUpdateSchema } from '@/lib/validations/buyer';
+import { eq } from 'drizzle-orm';
+import rateLimit from '@/lib/rate-limit';
+
+const limiter = rateLimit({
+  interval: 60 * 1000,
+  uniqueTokenPerInterval: 500,
+});
+
+export async function GET(request: NextRequest, context: any) {
+  const { params } = context;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const buyer = await db.query.buyers.findFirst({
+      where: eq(buyers.id, params.id),
+      with: {
+        owner: {
+          columns: { name: true, email: true },
+        },
+        history: {
+          orderBy: (history: any, { desc }: any) => [desc(history.changedAt)],
+          limit: 5,
+          with: {
+            changedByUser: {
+              columns: { name: true, email: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!buyer) {
+      return NextResponse.json({ error: 'Buyer not found' }, { status: 404 });
+    }
+
+    // Parse tags
+    const buyerWithParsedTags = {
+      ...buyer,
+      tags: buyer.tags ? JSON.parse(buyer.tags) : [],
+    };
+
+    return NextResponse.json(buyerWithParsedTags);
+  } catch (error) {
+    console.error('Error fetching buyer:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest, context: any) {
+  const { params } = context;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Resolve ownerId
+    let ownerId = session.user.id as string | undefined;
+    if (!ownerId && session.user.email) {
+      const maybeUser = await db.query.users.findFirst({ where: (u: any, { eq }: any) => eq(u.email, session.user.email) });
+      ownerId = maybeUser?.id;
+    }
+    if (!ownerId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await limiter.check(20, ownerId);
+
+    const body = await request.json();
+    const validatedData = buyerUpdateSchema.parse(body);
+
+    // Check if buyer exists and user has permission
+    const existingBuyer = await db.query.buyers.findFirst({
+      where: eq(buyers.id, params.id),
+    });
+
+    if (!existingBuyer) {
+      return NextResponse.json({ error: 'Buyer not found' }, { status: 404 });
+    }
+
+    // Check ownership or admin role
+  if (existingBuyer.ownerId !== ownerId && session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Check for concurrent updates
+    if (
+      (existingBuyer.updatedAt instanceof Date
+        ? existingBuyer.updatedAt.getTime()
+        : existingBuyer.updatedAt) !== validatedData.updatedAt
+    ) {
+      return NextResponse.json({ 
+        error: 'Record has been modified by another user. Please refresh and try again.' 
+      }, { status: 409 });
+    }
+
+    // Calculate diff for history
+    const changes: Record<string, { from: any; to: any }> = {};
+    Object.keys(validatedData).forEach(key => {
+      if (key !== 'id' && key !== 'updatedAt') {
+        const oldValue = (existingBuyer as any)[key];
+        const newValue = (validatedData as any)[key];
+        if (oldValue !== newValue) {
+          changes[key] = { from: oldValue, to: newValue };
+        }
+      }
+    });
+
+    const now = new Date();
+    
+    const updatedBuyer = await db.update(buyers)
+      .set({
+        ...validatedData,
+        email: validatedData.email || null,
+        budgetMin: validatedData.budgetMin || null,
+        budgetMax: validatedData.budgetMax || null,
+        notes: validatedData.notes || null,
+        tags: validatedData.tags ? JSON.stringify(validatedData.tags) : null,
+        updatedAt: now,
+      })
+      .where(eq(buyers.id, params.id))
+      .returning();
+
+    // Create history entry if there were changes
+    if (Object.keys(changes).length > 0) {
+      await db.insert(buyerHistory).values({
+        buyerId: params.id,
+        changedBy: ownerId,
+        diff: JSON.stringify(changes),
+      });
+    }
+
+    return NextResponse.json(updatedBuyer[0]);
+  } catch (error: any) {
+    if (error.message === 'Rate limit exceeded') {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+    console.error('Error updating buyer:', error);
+    return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: NextRequest, context: any) {
+  const { params } = context;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Resolve ownerId for authorization
+    let ownerId = session.user.id as string | undefined;
+    if (!ownerId && session.user.email) {
+      const maybeUser = await db.query.users.findFirst({ where: (u: any, { eq }: any) => eq(u.email, session.user.email) });
+      ownerId = maybeUser?.id;
+    }
+    if (!ownerId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const existingBuyer = await db.query.buyers.findFirst({
+      where: eq(buyers.id, params.id),
+    });
+
+    if (!existingBuyer) {
+      return NextResponse.json({ error: 'Buyer not found' }, { status: 404 });
+    }
+
+  if (existingBuyer.ownerId !== ownerId && session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await db.delete(buyers).where(eq(buyers.id, params.id));
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting buyer:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
