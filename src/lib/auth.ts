@@ -17,6 +17,7 @@ import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
