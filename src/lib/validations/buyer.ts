@@ -56,6 +56,8 @@ export const buyerUpdateSchema = buyerFormSchema.safeExtend({
     }
     return val;
   }, z.number()),
+  // Allow status to be updated via PUT (quick status updates)
+  status: statusEnum.optional(),
 });
 
 export const buyerFilterSchema = z.object({

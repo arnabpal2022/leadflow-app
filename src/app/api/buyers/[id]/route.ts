@@ -12,9 +12,34 @@ const limiter = rateLimit({
   uniqueTokenPerInterval: 500,
 });
 
-export async function GET(request: NextRequest, context: any) {
-  const { params } = context;
+function resolveParams(request: NextRequest, context: any) {
+  // context.params may be a promise, an object, or undefined in different Next versions/runtime
   try {
+    if (context?.params) {
+      // If it's a thenable (Promise), await it
+      if (typeof context.params.then === 'function') {
+        return context.params;
+      }
+      return Promise.resolve(context.params);
+    }
+  } catch (err) {
+    // ignore and fallback
+  }
+
+  // Fallback: parse id from request URL
+  try {
+    const url = new URL(request.url);
+    const parts = url.pathname.split('/').filter(Boolean);
+    const id = parts[parts.length - 1];
+    return Promise.resolve({ id });
+  } catch (err) {
+    return Promise.resolve(undefined);
+  }
+}
+
+export async function GET(request: NextRequest, context: any) {
+  try {
+    const params = await resolveParams(request, context);
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,8 +81,8 @@ export async function GET(request: NextRequest, context: any) {
 }
 
 export async function PUT(request: NextRequest, context: any) {
-  const { params } = context;
   try {
+    const params = await resolveParams(request, context);
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,13 +100,17 @@ export async function PUT(request: NextRequest, context: any) {
 
     await limiter.check(20, ownerId);
 
-    const body = await request.json();
-    const validatedData = buyerUpdateSchema.parse(body);
+  const body = await request.json();
+  console.log('PUT /api/buyers/:id incoming', { paramsId: params.id, body });
+  const validatedData = buyerUpdateSchema.parse(body);
+  console.log('PUT /api/buyers/:id validatedData', { validatedData });
 
     // Check if buyer exists and user has permission
     const existingBuyer = await db.query.buyers.findFirst({
       where: eq(buyers.id, params.id),
     });
+
+    console.log('PUT /api/buyers/:id existingBuyer', { id: existingBuyer?.id, updatedAt: existingBuyer?.updatedAt });
 
     if (!existingBuyer) {
       return NextResponse.json({ error: 'Buyer not found' }, { status: 404 });
@@ -89,15 +118,17 @@ export async function PUT(request: NextRequest, context: any) {
 
     // Check ownership or admin role
   if (existingBuyer.ownerId !== ownerId && session.user.role !== 'admin') {
+    console.log('PUT /api/buyers/:id forbidden - owner mismatch', { existingOwnerId: existingBuyer.ownerId, ownerId, sessionRole: session.user.role });
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Check for concurrent updates
-    if (
-      (existingBuyer.updatedAt instanceof Date
-        ? existingBuyer.updatedAt.getTime()
-        : existingBuyer.updatedAt) !== validatedData.updatedAt
-    ) {
+    const existingUpdatedAtNumber = (existingBuyer.updatedAt instanceof Date
+      ? existingBuyer.updatedAt.getTime()
+      : existingBuyer.updatedAt);
+
+    if (existingUpdatedAtNumber !== validatedData.updatedAt) {
+      console.log('PUT /api/buyers/:id concurrent update mismatch', { existingUpdatedAtNumber, validatedDataUpdatedAt: validatedData.updatedAt });
       return NextResponse.json({ 
         error: 'Record has been modified by another user. Please refresh and try again.' 
       }, { status: 409 });
@@ -117,7 +148,7 @@ export async function PUT(request: NextRequest, context: any) {
 
     const now = new Date();
     
-    const updatedBuyer = await db.update(buyers)
+  const updatedBuyer = await db.update(buyers)
       .set({
         ...validatedData,
         email: validatedData.email || null,
@@ -127,10 +158,12 @@ export async function PUT(request: NextRequest, context: any) {
         tags: validatedData.tags ? JSON.stringify(validatedData.tags) : null,
         updatedAt: now,
       })
-      .where(eq(buyers.id, params.id))
+  .where(eq(buyers.id, params.id))
       .returning();
 
-    // Create history entry if there were changes
+  console.log('PUT /api/buyers/:id updatedBuyer result', { updatedBuyer });
+
+  // Create history entry if there were changes
     if (Object.keys(changes).length > 0) {
       await db.insert(buyerHistory).values({
         buyerId: params.id,
@@ -139,7 +172,8 @@ export async function PUT(request: NextRequest, context: any) {
       });
     }
 
-    return NextResponse.json(updatedBuyer[0]);
+  // updatedBuyer is an array from drizzle .returning(); return the first item
+  return NextResponse.json(updatedBuyer && updatedBuyer.length ? updatedBuyer[0] : null);
   } catch (error: any) {
     if (error.message === 'Rate limit exceeded') {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
@@ -150,7 +184,7 @@ export async function PUT(request: NextRequest, context: any) {
 }
 
 export async function DELETE(request: NextRequest, context: any) {
-  const { params } = context;
+  const params = await resolveParams(request, context);
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {

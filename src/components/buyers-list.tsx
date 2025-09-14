@@ -272,7 +272,7 @@ export default function BuyersList() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {data?.buyers.map((buyer) => (
-                    <tr key={buyer.id} className="hover:bg-gray-50 transition-transform duration-150 ease-in-out hover:scale-[1.01]">
+                    <tr key={buyer.id} className="hover:bg-gray-50 transition-transform duration-150 ease-in-out hover:-translate-y-0.5 hover:shadow-sm">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
