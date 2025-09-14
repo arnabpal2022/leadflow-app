@@ -10,7 +10,7 @@ import * as schema from './schema';
 let dbInstance: ReturnType<typeof drizzleLibsql> | ReturnType<typeof drizzleSqlite>;
 
 if (process.env.DATABASE_URL) {
-  const client = createClient({ url: process.env.DATABASE_URL });
+  const client = createClient({ url: process.env.DATABASE_URL, authToken: process.env.DATABASE_TOKEN });
   dbInstance = drizzleLibsql(client, { schema });
 } else {
   const sqliteFile = process.env.SQLITE_FILE || './dev.db';
