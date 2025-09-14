@@ -4,6 +4,8 @@
 A mini-CRM for capturing, listing, and managing buyer leads, built with a modern Next.js and TypeScript stack. This project fulfills a comprehensive assignment focused on full-stack development best practices, including data validation, authentication, and transactional database operations.
 
 **Live Demo:** [[Link of the Demo](https://leadflow-app-eight.vercel.app/)]
+<img width="1910" height="926" alt="image" src="https://github.com/user-attachments/assets/bfab06b6-7b39-40e6-84d0-915eef74bbd5" />
+
 
 ## Features
 
