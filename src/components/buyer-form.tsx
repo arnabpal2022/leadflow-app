@@ -84,6 +84,9 @@ export default function BuyerForm({ initialData, isEdit = false, onCancel }: Buy
         ? toNumberTimestamp(initialData!.updatedAt)
         : undefined;
 
+      // Normalize bhk: empty string -> undefined for non-residential property types
+      const normalizedBhk = data.bhk === '' ? undefined : data.bhk;
+
       const payload = {
         ...data,
         tags,
@@ -91,6 +94,7 @@ export default function BuyerForm({ initialData, isEdit = false, onCancel }: Buy
         budgetMax: data.budgetMax || undefined,
         email: data.email || undefined,
         notes: data.notes || undefined,
+        bhk: normalizedBhk,
         ...(isEdit && initialData ? { id: initialData.id, ...(safeUpdatedAt !== undefined ? { updatedAt: safeUpdatedAt } : {}) } : {}),
       };
 

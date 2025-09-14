@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import { Montserrat, Geist, Geist_Mono } from 'next/font/google';
+import { Manrope } from 'next/font/google';
 import "./globals.css";
 import SessionProvider from '@/components/session-provider';
+import LogoutButton from '@/components/logout-button';
 
-const montserrat = Montserrat({
-  variable: '--font-montserrat',
-  subsets: ['latin'],
-  weight: ['300','400','500','600','700'],
-});
-
-const geist = Geist_Mono({
+const geist = Manrope({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });
@@ -42,6 +37,7 @@ export default function RootLayout({
                     <a href="/buyers" className="hover:text-gray-900">Buyers</a>
                     <a href="/buyers/new" className="hover:text-gray-900">New</a>
                     <a href="/buyers/import" className="hover:text-gray-900">Import</a>
+                    <LogoutButton />
                   </nav>
                 </div>
               </div>

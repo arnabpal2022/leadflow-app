@@ -33,16 +33,50 @@ export async function POST(request: NextRequest) {
     const text = await file.text();
     const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
 
-    if (parsed.data.length > 200) {
+    if (parsed.errors && parsed.errors.length > 0) {
+      return NextResponse.json({ error: 'CSV parse error', details: parsed.errors }, { status: 400 });
+    }
+
+    // parsed.data may be an array of arrays or objects depending on header parsing
+    const rows = Array.isArray(parsed.data) ? parsed.data : [];
+
+    // Filter out empty rows (sometimes Papa returns rows with all empty strings)
+    const filteredRows = rows.filter((r: any) => {
+      if (!r || typeof r !== 'object') return false;
+      // check if all values are empty
+      const values = Object.values(r).map(v => (v === null || v === undefined ? '' : String(v).trim()));
+      return values.some(v => v !== '');
+    });
+
+  if (filteredRows.length > 200) {
       return NextResponse.json({ error: 'Maximum 200 rows allowed' }, { status: 400 });
     }
 
     const validRows: any[] = [];
     const errors: Array<{ row: number; errors: string[] }> = [];
 
-  parsed.data.forEach((row: any, index: number) => {
+  filteredRows.forEach((row: any, index: number) => {
       try {
-        const validatedRow = csvImportRowSchema.parse(row);
+        // Coerce common CSV string fields to expected shapes/types
+        const normalized = {
+          ...row,
+          // trim strings
+          fullName: typeof row.fullName === 'string' ? row.fullName.trim() : row.fullName,
+          email: typeof row.email === 'string' ? row.email.trim() : row.email,
+          phone: typeof row.phone === 'string' ? row.phone.trim() : row.phone,
+          city: typeof row.city === 'string' ? row.city.trim() : row.city,
+          propertyType: typeof row.propertyType === 'string' ? row.propertyType.trim() : row.propertyType,
+          bhk: row.bhk === '' ? undefined : (typeof row.bhk === 'string' ? row.bhk.trim() : row.bhk),
+          purpose: typeof row.purpose === 'string' ? row.purpose.trim() : row.purpose,
+          budgetMin: row.budgetMin === '' || row.budgetMin === undefined ? undefined : Number(row.budgetMin),
+          budgetMax: row.budgetMax === '' || row.budgetMax === undefined ? undefined : Number(row.budgetMax),
+          timeline: typeof row.timeline === 'string' ? row.timeline.trim() : row.timeline,
+          source: typeof row.source === 'string' ? row.source.trim() : row.source,
+          notes: typeof row.notes === 'string' ? row.notes.trim() : row.notes,
+          tags: typeof row.tags === 'string' ? (row.tags ? row.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []) : row.tags,
+        };
+
+        const validatedRow = csvImportRowSchema.parse(normalized);
         
         // Additional validation for BHK requirement
         if (['Apartment', 'Villa'].includes(validatedRow.propertyType) && !validatedRow.bhk) {
@@ -63,15 +97,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Ensure ownerId exists
-        const ownerId = session.user.id;
-        if (!ownerId) {
+        const resolvedOwnerId = ownerId;
+        if (!resolvedOwnerId) {
           errors.push({ row: index + 1, errors: ['Unauthorized'] });
           return;
         }
 
         validRows.push({
           ...validatedRow,
-          ownerId,
+          ownerId: resolvedOwnerId,
           status: validatedRow.status || 'New',
         });
       } catch (error: any) {
@@ -83,7 +117,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Insert valid rows in transaction
+  console.log('CSV import parsed.meta', { fields: parsed.meta?.fields });
+  console.log('CSV import filteredRows count', filteredRows.length);
+  console.log('CSV import validation errors (so far)', { errorsCount: errors.length });
+
+  // Insert valid rows in transaction
     let insertedCount = 0;
     if (validRows.length > 0) {
       const insertedBuyers = await db.insert(buyers).values(
@@ -109,7 +147,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      totalRows: parsed.data.length,
+      totalRows: filteredRows.length,
+      fields: parsed.meta?.fields || [],
       insertedCount,
       errorCount: errors.length,
       errors,

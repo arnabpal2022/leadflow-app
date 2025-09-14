@@ -14,7 +14,8 @@ export const buyerFormSchema = z.object({
   phone: z.string().regex(/^\d{10,15}$/, 'Phone must be 10-15 digits'),
   city: cityEnum,
   propertyType: propertyTypeEnum,
-  bhk: bhkEnum.optional(),
+  // Allow empty string or null for bhk so non-residential property types can omit it
+  bhk: z.union([bhkEnum, z.literal(''), z.null()]).optional(),
   purpose: purposeEnum,
   budgetMin: z.number().int().positive().optional(),
   budgetMax: z.number().int().positive().optional(),
@@ -60,6 +61,25 @@ export const buyerUpdateSchema = buyerFormSchema.safeExtend({
   status: statusEnum.optional(),
 });
 
+// Lightweight schema for small/partial updates (e.g. quick status changes)
+export const buyerPatchSchema = z.object({
+  id: z.string(),
+  updatedAt: z.preprocess((val) => {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    if (typeof val === 'string') {
+      const asNum = Number(val);
+      if (!Number.isNaN(asNum)) return asNum;
+      const parsed = Date.parse(val);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return val;
+  }, z.number()),
+  // Only allow status in this minimal schema (can be extended later)
+  status: statusEnum.optional(),
+  // allow tags if client sends them along with status
+  tags: z.array(z.string()).optional(),
+});
+
 export const buyerFilterSchema = z.object({
   search: z.string().optional(),
   city: cityEnum.optional(),
@@ -77,14 +97,26 @@ export const csvImportRowSchema = z.object({
   phone: z.string().regex(/^\d{10,15}$/),
   city: cityEnum,
   propertyType: propertyTypeEnum,
-  bhk: bhkEnum.optional().or(z.literal('')),
+  bhk: z.union([bhkEnum, z.literal(''), z.null()]).optional(),
   purpose: purposeEnum,
-  budgetMin: z.string().transform(val => val ? parseInt(val) : undefined).optional(),
-  budgetMax: z.string().transform(val => val ? parseInt(val) : undefined).optional(),
+  budgetMin: z.union([z.string(), z.number()]).transform(val => {
+    if (val === undefined || val === '' || val === null) return undefined;
+    const n = typeof val === 'number' ? val : parseInt(val as string);
+    return Number.isNaN(n) ? undefined : n;
+  }).optional(),
+  budgetMax: z.union([z.string(), z.number()]).transform(val => {
+    if (val === undefined || val === '' || val === null) return undefined;
+    const n = typeof val === 'number' ? val : parseInt(val as string);
+    return Number.isNaN(n) ? undefined : n;
+  }).optional(),
   timeline: timelineEnum,
   source: sourceEnum,
   notes: z.string().max(1000).optional().or(z.literal('')),
-  tags: z.string().transform(val => val ? val.split(',').map(t => t.trim()) : []).optional(),
+  tags: z.union([z.string(), z.array(z.string())]).transform(val => {
+    if (!val) return [] as string[];
+    if (Array.isArray(val)) return val.map(v => v.trim());
+    return (val as string).split(',').map(t => t.trim()).filter(Boolean);
+  }).optional(),
   status: statusEnum.optional(),
 });
 

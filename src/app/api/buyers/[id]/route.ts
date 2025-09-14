@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { buyers, buyerHistory } from '@/lib/db/schema';
-import { buyerUpdateSchema } from '@/lib/validations/buyer';
+import { buyerUpdateSchema, buyerPatchSchema } from '@/lib/validations/buyer';
 import { eq } from 'drizzle-orm';
 import rateLimit from '@/lib/rate-limit';
 
@@ -102,7 +102,20 @@ export async function PUT(request: NextRequest, context: any) {
 
   const body = await request.json();
   console.log('PUT /api/buyers/:id incoming', { paramsId: params.id, body });
-  const validatedData = buyerUpdateSchema.parse(body);
+
+  // Try full update schema first, fall back to lightweight patch schema for quick updates
+  let validatedData: any;
+  try {
+    validatedData = buyerUpdateSchema.parse(body);
+  } catch (err) {
+    // Attempt lightweight patch (e.g. only status + updatedAt)
+    try {
+      validatedData = buyerPatchSchema.parse(body);
+    } catch (err2) {
+      console.log('PUT /api/buyers/:id validation failed', { err, err2 });
+      throw err; // Let outer catch handle responding with Invalid data
+    }
+  }
   console.log('PUT /api/buyers/:id validatedData', { validatedData });
 
     // Check if buyer exists and user has permission
@@ -135,31 +148,42 @@ export async function PUT(request: NextRequest, context: any) {
     }
 
     // Calculate diff for history
-    const changes: Record<string, { from: any; to: any }> = {};
-    Object.keys(validatedData).forEach(key => {
-      if (key !== 'id' && key !== 'updatedAt') {
-        const oldValue = (existingBuyer as any)[key];
-        const newValue = (validatedData as any)[key];
-        if (oldValue !== newValue) {
-          changes[key] = { from: oldValue, to: newValue };
+      const changes: Record<string, { from: any; to: any }> = {};
+      Object.keys(validatedData).forEach(key => {
+        if (key !== 'id' && key !== 'updatedAt') {
+          const oldValue = (existingBuyer as any)[key];
+          const newValue = (validatedData as any)[key];
+          if (oldValue !== newValue) {
+            changes[key] = { from: oldValue, to: newValue };
+          }
         }
-      }
-    });
+      });
 
     const now = new Date();
     
+  // Build a set object only with fields provided in the validated data to avoid overwriting unspecified fields
+  const setData: any = {};
+  if ('status' in validatedData) setData.status = validatedData.status;
+  if ('email' in validatedData) setData.email = validatedData.email || null;
+  if ('budgetMin' in validatedData) setData.budgetMin = validatedData.budgetMin ?? null;
+  if ('budgetMax' in validatedData) setData.budgetMax = validatedData.budgetMax ?? null;
+  if ('notes' in validatedData) setData.notes = validatedData.notes ?? null;
+  if ('tags' in validatedData) setData.tags = validatedData.tags ? JSON.stringify(validatedData.tags) : null;
+  if ('fullName' in validatedData) setData.fullName = validatedData.fullName;
+  if ('phone' in validatedData) setData.phone = validatedData.phone;
+  if ('city' in validatedData) setData.city = validatedData.city;
+  if ('propertyType' in validatedData) setData.propertyType = validatedData.propertyType;
+  if ('bhk' in validatedData) setData.bhk = validatedData.bhk ?? null;
+  if ('purpose' in validatedData) setData.purpose = validatedData.purpose;
+  if ('timeline' in validatedData) setData.timeline = validatedData.timeline;
+  if ('source' in validatedData) setData.source = validatedData.source;
+
+  setData.updatedAt = now;
+
   const updatedBuyer = await db.update(buyers)
-      .set({
-        ...validatedData,
-        email: validatedData.email || null,
-        budgetMin: validatedData.budgetMin || null,
-        budgetMax: validatedData.budgetMax || null,
-        notes: validatedData.notes || null,
-        tags: validatedData.tags ? JSON.stringify(validatedData.tags) : null,
-        updatedAt: now,
-      })
-  .where(eq(buyers.id, params.id))
-      .returning();
+    .set(setData)
+    .where(eq(buyers.id, params.id))
+    .returning();
 
   console.log('PUT /api/buyers/:id updatedBuyer result', { updatedBuyer });
 

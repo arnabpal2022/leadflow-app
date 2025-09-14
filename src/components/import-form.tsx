@@ -35,12 +35,17 @@ Jane Smith,,9876543211,Mohali,Villa,3,Buy,8000000,12000000,3-6m,Referral,"Intere
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.type === "text/csv") {
-      setFile(selectedFile);
-      setResult(null);
-    } else {
-      alert("Please select a valid CSV file");
+    if (selectedFile) {
+      const name = selectedFile.name || '';
+      const isCsvByName = name.toLowerCase().endsWith('.csv');
+      const isCsvByType = (selectedFile.type || '').toLowerCase().includes('csv');
+      if (isCsvByName || isCsvByType) {
+        setFile(selectedFile);
+        setResult(null);
+        return;
+      }
     }
+    alert('Please select a valid CSV file');
   };
 
   const handleImport = async () => {
@@ -60,8 +65,9 @@ Jane Smith,,9876543211,Mohali,Villa,3,Buy,8000000,12000000,3-6m,Referral,"Intere
         const result = await response.json();
         setResult(result);
       } else {
-        const error = await response.json();
-        alert(error.error || "Import failed");
+  const error = await response.json();
+  const details = error.details ? JSON.stringify(error.details) : error.error || 'Import failed';
+  alert(details);
       }
     } catch (error) {
       console.error("Import error:", error);
@@ -99,12 +105,15 @@ Jane Smith,,9876543211,Mohali,Villa,3,Buy,8000000,12000000,3-6m,Referral,"Intere
       <div className="bg-white p-6 rounded-lg shadow border border-gray-100">
         <h2 className="text-xl font-semibold mb-4">Upload CSV File</h2>
         <div className="space-y-4">
-          <Input
-            type="file"
-            accept=".csv"
-            onChange={handleFileChange}
-            className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
+          <div className="w-full">
+            <Input
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              className="w-full h-12 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 file:mr-4 file:py-3 file:px-4 file:rounded-md file:border file:border-gray-200 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <p className="mt-2 text-xs text-gray-500">Accepted: .csv — Max 200 rows</p>
+          </div>
 
           {file && (
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
