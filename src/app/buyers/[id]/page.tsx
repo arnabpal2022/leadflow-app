@@ -7,7 +7,8 @@ import { buyers } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 interface Props {
-  params: { id: string };
+  // params can be a plain object or a Promise in different Next runtime shapes
+  params: { id: string } | Promise<{ id: string }> | any;
 }
 
 export default async function BuyerDetailPage({ params }: Props) {
