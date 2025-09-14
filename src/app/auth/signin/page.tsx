@@ -125,16 +125,7 @@ export default function SignInPage() {
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? 'Sending...' : 'Send sign-in link'}
               </Button>
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleDemoLogin}
-                disabled={loading}
-                className="w-full"
-              >
-                Demo Login
-              </Button>
+            
             </div>
           </form>
         </div>
