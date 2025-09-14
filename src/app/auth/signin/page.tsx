@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Mail } from 'lucide-react';
 import Image from 'next/image';
 
 export default function SignInPage() {
+  const { data: session } = useSession();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -96,15 +97,27 @@ export default function SignInPage() {
         </div>
 
         <div className="p-16 flex flex-col justify-center space-y-8 h-full">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Sign in to Buyer Leads
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Enter your email to receive a sign-in link
-            </p>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {session ? (
+            <div className="text-center">
+              <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+                You're signed in
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">Proceed to your buyers dashboard.</p>
+              <div className="mt-6">
+                <Button onClick={() => router.push('/buyers')}>Go to buyers</Button>
+              </div>
+            </div>
+          ) : (
+          <>
+            <div>
+              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Sign in to Buyer Leads
+              </h2>
+              <p className="mt-2 text-center text-sm text-gray-600">
+                Enter your email to receive a sign-in link
+              </p>
+            </div>
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="sr-only">
                 Email address
@@ -128,6 +141,8 @@ export default function SignInPage() {
             
             </div>
           </form>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ const geist = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Buyer Leads App",
+  title: "LeadFlow",
   description: "Manage your buyer leads effectively",
 };
 
@@ -30,8 +30,8 @@ export default function RootLayout({
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                   <div className="flex items-center space-x-3">
-                    <div className="text-lg font-semibold tracking-tight">Buyer Leads</div>
-                    <div className="text-sm text-gray-500">Manage leads effortlessly</div>
+                    <div className="text-lg font-semibold tracking-tight">LeadFlow</div>
+                    <div className="text-sm text-gray-500">Manage buyer leads effortlessly</div>
                   </div>
                   <nav className="flex items-center space-x-2 text-sm text-gray-600">
                     <a href="/buyers" className="hover:text-gray-900">Buyers</a>
