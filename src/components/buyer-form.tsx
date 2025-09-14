@@ -14,9 +14,10 @@ import { X } from 'lucide-react';
 interface BuyerFormProps {
   initialData?: Partial<BuyerFormData & { id: string; updatedAt: number }>;
   isEdit?: boolean;
+  onCancel?: () => void;
 }
 
-export default function BuyerForm({ initialData, isEdit = false }: BuyerFormProps) {
+export default function BuyerForm({ initialData, isEdit = false, onCancel }: BuyerFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
@@ -64,6 +65,25 @@ export default function BuyerForm({ initialData, isEdit = false }: BuyerFormProp
   const onSubmit = async (data: BuyerFormData) => {
     setLoading(true);
     try {
+      // Ensure updatedAt is sent as a numeric timestamp (server expects number)
+      const toNumberTimestamp = (val: any): number | undefined => {
+        if (typeof val === 'number' && !Number.isNaN(val)) return val;
+        if (typeof val === 'string') {
+          // if string is numeric (milliseconds or seconds), prefer numeric parse
+          const asNum = Number(val);
+          if (!Number.isNaN(asNum)) return asNum;
+          const parsed = Date.parse(val);
+          if (!Number.isNaN(parsed)) return parsed;
+          return undefined;
+        }
+        if (val instanceof Date) return val.getTime();
+        return undefined;
+      };
+
+      const safeUpdatedAt = isEdit && initialData?.updatedAt !== undefined
+        ? toNumberTimestamp(initialData!.updatedAt)
+        : undefined;
+
       const payload = {
         ...data,
         tags,
@@ -71,10 +91,7 @@ export default function BuyerForm({ initialData, isEdit = false }: BuyerFormProp
         budgetMax: data.budgetMax || undefined,
         email: data.email || undefined,
         notes: data.notes || undefined,
-        ...(isEdit && initialData ? { 
-          id: initialData.id, 
-          updatedAt: initialData.updatedAt 
-        } : {}),
+        ...(isEdit && initialData ? { id: initialData.id, ...(safeUpdatedAt !== undefined ? { updatedAt: safeUpdatedAt } : {}) } : {}),
       };
 
       const url = isEdit ? `/api/buyers/${initialData?.id}` : '/api/buyers';
@@ -347,7 +364,7 @@ export default function BuyerForm({ initialData, isEdit = false }: BuyerFormProp
         <Button type="submit" disabled={loading}>
           {loading ? 'Saving...' : isEdit ? 'Update Lead' : 'Create Lead'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button type="button" variant="outline" onClick={() => onCancel ? onCancel() : router.back()}>
           Cancel
         </Button>
       </div>

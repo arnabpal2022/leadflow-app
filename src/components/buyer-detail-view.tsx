@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -18,19 +19,43 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
   const [status, setStatus] = useState(buyer.status);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const canEdit = buyer.owner.id === buyer.ownerId; // Simplified ownership check
+  const { data: session } = useSession();
+  // Allow edit if current session user email matches owner email or ownerId matches
+  const canEdit = Boolean(
+    (session?.user?.email && buyer.owner?.email && session.user.email === buyer.owner.email) ||
+    (session?.user?.id && buyer.ownerId && session.user.id === buyer.ownerId)
+  );
 
   const handleStatusUpdate = async (newStatus: string) => {
     setUpdatingStatus(true);
     try {
+      const toNumberTimestamp = (val: any): number | undefined => {
+        if (typeof val === 'number' && !Number.isNaN(val)) return val;
+        if (typeof val === 'string') {
+          const asNum = Number(val);
+          if (!Number.isNaN(asNum)) return asNum;
+          const parsed = Date.parse(val);
+          if (!Number.isNaN(parsed)) return parsed;
+          return undefined;
+        }
+        if (val instanceof Date) return val.getTime();
+        return undefined;
+      };
+
+      // Ensure updatedAt is a numeric timestamp to satisfy server validation
+      const safeUpdatedAt = toNumberTimestamp(buyer.updatedAt);
+
+      const payload = {
+        ...buyer,
+        status: newStatus,
+        tags: buyer.tags || [],
+        updatedAt: safeUpdatedAt,
+      };
+
       const response = await fetch(`/api/buyers/${buyer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...buyer,
-          status: newStatus,
-          tags: buyer.tags || [],
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -78,6 +103,7 @@ export default function BuyerDetailView({ buyer }: BuyerDetailViewProps) {
         <BuyerForm 
           initialData={buyer} 
           isEdit={true}
+          onCancel={() => setIsEditing(false)}
         />
       </div>
     );

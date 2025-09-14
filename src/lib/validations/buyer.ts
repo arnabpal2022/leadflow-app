@@ -45,7 +45,17 @@ export const buyerFormSchema = z.object({
 // Extend the validated form schema for update operations (id + updatedAt)
 export const buyerUpdateSchema = buyerFormSchema.safeExtend({
   id: z.string(),
-  updatedAt: z.number(),
+  // Accept numeric timestamps or strings that can be parsed to numbers/ISO dates
+  updatedAt: z.preprocess((val) => {
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    if (typeof val === 'string') {
+      const asNum = Number(val);
+      if (!Number.isNaN(asNum)) return asNum;
+      const parsed = Date.parse(val);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return val;
+  }, z.number()),
 });
 
 export const buyerFilterSchema = z.object({
